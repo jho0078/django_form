@@ -10,6 +10,7 @@
 
 <!--<a href="{% url 'boards:create' %}">새 글 작성</a>-->
 {% for board in boards %}
+    <p>작성자 {{ board.user }}</p>
     <p>{{ board.pk }}</p>
     <p>{{ board.title }}</p>
     <a href="{% url 'boards:detail' board.pk %}">글 보러가기</a>

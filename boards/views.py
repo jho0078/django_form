@@ -19,7 +19,12 @@ def create(request):
         form = BoardForm(request.POST)
         # form 유효성 체크
         if form.is_valid():
-            board = form.save()
+            # board 를 바로 저장하지 않고 현재 user를  넣고 저장
+            # 실제 DB에 반영 전까지의 단계를 진행하고 그 중간에 USER 정보를
+            # request.user 에서 가져와서 그 후에 저장한다.
+            board = form.save(commit=False) 
+            board.user = request.user
+            board.save()
             return redirect('boards:detail', board.pk)
     # GET 요청(혹은 다른 메서드)이면 기본 폼을 생성한다.
     else:
@@ -46,18 +51,21 @@ def delete(request, board_pk):
 @login_required
 def update(request, board_pk):
     board = get_object_or_404(Board, pk=board_pk)
-    if request.method == 'POST':
-        form = BoardForm(request.POST, instance=board) # 1
-        if form.is_valid():
-            board = form.save()                        # 2
-            return redirect('boards:detail', board.pk)
-    # GET 요청이면(수정하기 버튼을 눌렀을 때)
+    if board.user == request.user:
+        if request.method == 'POST':
+            form = BoardForm(request.POST, instance=board) # 1
+            if form.is_valid():
+                board = form.save()                        # 2
+                return redirect('boards:detail', board.pk)
+        # GET 요청이면(수정하기 버튼을 눌렀을 때)
+        else:
+            # BoardForm 을 초기화(사용자 입력 값을 넣어준 상태로)
+            # form = BoardForm(initial={'title': board.title, 'content': board.content})
+            form = BoardForm(instance=board)               # 3
+        
+        # 1. POST : 요청에서 검증에 실패하였을 때, 오류 메세지가 포함된 상태
+        # 2. GET : 요청에서 초기화된 상태
     else:
-        # BoardForm 을 초기화(사용자 입력 값을 넣어준 상태로)
-        # form = BoardForm(initial={'title': board.title, 'content': board.content})
-        form = BoardForm(instance=board)               # 3
-    
-    # 1. POST : 요청에서 검증에 실패하였을 때, 오류 메세지가 포함된 상태
-    # 2. GET : 요청에서 초기화된 상태
+        return redirect('boards:index')
     context = {'form': form, 'board': board,}
     return render(request, 'boards/form.html', context)
