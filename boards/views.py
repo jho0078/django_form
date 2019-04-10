@@ -1,13 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+# import hashlib
 from .models import Board
 from .forms import BoardForm
 
 # Create your views here.
 def index(request):
+    # if request.user.is_authenticated:
+    #     gravatar_url = hashlib.md5(request.user.email.strip().lower().encode('utf-8')).hexdigest()
+    # else:
+    #     gravatar_url = None
     boards = Board.objects.order_by('-pk')
     context = {
-        'boards' : boards
+        'boards' : boards,
+        # 'gravatar_url': gravatar_url,
     }
     return render(request, 'boards/index.html', context)
 
@@ -42,11 +48,14 @@ def detail(request, board_pk):
     
 def delete(request, board_pk):
     board = get_object_or_404(Board, pk=board_pk)
-    if request.method == 'POST':
-        board.delete()
-        return redirect('boards:index')
+    if board.user == request.user:
+        if request.method == 'POST':
+            board.delete()
+            return redirect('boards:index')
+        else:
+            return redirect('boards:detail', board.pk)
     else:
-        return redirect('boards:detail', board.pk)
+        return redirect('boards:index')
         
 @login_required
 def update(request, board_pk):
