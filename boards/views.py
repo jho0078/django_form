@@ -1,8 +1,9 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 # import hashlib
-from .models import Board
-from .forms import BoardForm
+from .models import Board, Comment
+from .forms import BoardForm, CommentForm
 
 # Create your views here.
 def index(request):
@@ -10,7 +11,8 @@ def index(request):
     #     gravatar_url = hashlib.md5(request.user.email.strip().lower().encode('utf-8')).hexdigest()
     # else:
     #     gravatar_url = None
-    boards = Board.objects.order_by('-pk')
+    boards = get_list_or_404(Board.objects.order_by('-pk'))
+    # boards = Board.objects.order_by('-pk')
     context = {
         'boards' : boards,
         # 'gravatar_url': gravatar_url,
@@ -41,8 +43,12 @@ def create(request):
 def detail(request, board_pk):
     # board = Board.objects.get(pk=board_pk)
     board = get_object_or_404(Board, pk=board_pk)
+    # comments = board.comment_set.all()
+    form = CommentForm()
     context = {
-        'board' : board
+        'board' : board,
+        # 'comments' : comments,
+        'form' : form,
     }
     return render(request, 'boards/detail.html', context)
     
@@ -78,3 +84,26 @@ def update(request, board_pk):
         return redirect('boards:index')
     context = {'form': form, 'board': board,}
     return render(request, 'boards/form.html', context)
+
+# GET방식은 들어올 수 없다
+@require_POST
+@login_required
+def comment_create(request, board_pk):
+    # board = get_object_or_404(Board, pk=board_pk)
+    form = CommentForm(request.POST)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        # 객체자체를 넣어도 번호를 알아서 가져온다
+        comment.user = request.user
+        # comment.board = board
+        comment.board_id = board_pk
+        comment.save()
+        return redirect('boards:detail', board_pk)
+
+@require_POST
+@login_required
+def comment_delete(request, board_pk, comment_pk):
+    comment = get_object_or_404(Comment, pk=comment_pk)
+    comment.delete()
+    return redirect('boards:detail', board_pk)
+    
